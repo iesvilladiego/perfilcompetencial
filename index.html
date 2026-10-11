@@ -105,7 +105,7 @@
     </script>
     <style>
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f3f4f6; }
-        .table-container { max-height: 70vh; overflow-y: auto; }
+        .table-container { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
         thead th { position: sticky; top: 0; z-index: 10; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -150,6 +150,10 @@
            env() devuelve 0 en dispositivos sin notch, así que es seguro usarlo siempre. */
         html {
             /* No poner overflow-x ni max-width en html: en Android puede romper el scroll */
+            /* Estabilizar el tamaño del texto: evita el inflado automático de
+               iOS al girar a horizontal y los reflows en escritorio */
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
         }
         body {
             padding-top: env(safe-area-inset-top);
@@ -185,6 +189,13 @@
             }
         }
 
+        /* Login: permitir scroll vertical si la tarjeta no cabe (móvil en
+           horizontal, pantallas bajas o teclado virtual abierto) */
+        #login-screen {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         /* Login screen en móvil: padding reducido y tarjeta más compacta */
         @media (max-width: 640px) {
             #login-screen {
@@ -206,12 +217,27 @@
         @media (max-width: 768px) {
             #user-bar {
                 gap: 0.5rem !important;
+                flex-wrap: wrap;
+                justify-content: flex-end;
             }
             #user-bar span:first-child {
                 display: none; /* "Conectado:" */
             }
             #user-bar > button:last-child span:last-child {
                 display: none; /* solo icono */
+            }
+            /* Nombre de usuario largo: elipsis para no empujar los botones
+               fuera de la pantalla */
+            #user-display {
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            /* Botones de icono del navbar: objetivo táctil de 44px de ancho */
+            #user-bar > button {
+                min-width: 44px;
+                justify-content: center;
             }
         }
 
@@ -252,6 +278,24 @@
                 padding-bottom: 0.5rem !important;
                 font-size: 0.75rem;
             }
+            /* Cabeceras: mismo padding compacto que las celdas (antes la fila
+               de cabecera quedaba mucho más alta que las filas de datos) */
+            #results-thead th {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+        }
+
+        /* Tablets (641-1024px): celdas de resultados algo más compactas para
+           reducir el scroll horizontal */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            #results-thead th:not(:first-child),
+            #results-body td:not(:first-child) {
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+            }
         }
 
         /* Tabla de objetivos: en móvil, columnas aún más estrechas */
@@ -267,6 +311,29 @@
             #objectives-thead th {
                 min-width: 32px !important;
             }
+        }
+
+        /* Modales: limitar la altura y permitir scroll interno en CUALQUIER
+           tamaño de pantalla (tablets en horizontal, ventanas bajas en
+           portátiles). dvh (dynamic viewport height) se declara después como
+           mejora progresiva: se ajusta mejor al teclado virtual en móviles
+           modernos; los navegadores que no lo soportan ignoran esa línea. */
+        #custom-modal > div,
+        #pdf-modal > div,
+        #user-mgmt-modal > div,
+        #course-mgmt-modal > div,
+        #course-editor-modal > div,
+        #user-editor-modal > div {
+            max-height: 90vh;
+            max-height: 90dvh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* El tutorial ya gestiona su scroll interno (flex + overflow), solo
+           se le aplica la altura máxima con variante dvh */
+        #tutorial-modal > div {
+            max-height: 90vh;
+            max-height: 90dvh;
         }
 
         /* Modales: en móvil, ocupar casi toda la pantalla */
@@ -302,6 +369,23 @@
             }
         }
 
+        /* Tarjetas superiores (Gestión y Unidades Guardadas): padding
+           reducido en móvil para aprovechar el ancho de la pantalla */
+        @media (max-width: 640px) {
+            #gestion-card,
+            #saved-units-card {
+                padding: 1rem !important;
+            }
+            /* Titulación: espaciados más contenidos en móvil */
+            #titulation-section .p-6 {
+                padding: 1.25rem !important;
+            }
+            #titulation-result {
+                padding-top: 1.25rem !important;
+                padding-bottom: 1.25rem !important;
+            }
+        }
+
         /* Selector de alumnos en objetivos: ocupar todo el ancho en móvil */
         @media (max-width: 640px) {
             #objectives-student-select {
@@ -320,6 +404,27 @@
             #upload-section-content .mt-8 button {
                 width: 100%;
                 justify-content: center;
+            }
+            /* Botoneras laterales (Exportar/Importar/PDF/Borrar y Exportar PDF/
+               Eliminar Curso): rejilla de 2 columnas a todo el ancho, más fácil
+               de pulsar y más compacta que botones apilados en columna */
+            .actions-row {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                width: 100%;
+            }
+            .actions-row > button,
+            .actions-row > label {
+                width: 100%;
+                justify-content: center;
+            }
+            /* Titulación: Anterior/Siguiente reparten el ancho a ambos lados
+               del contador de alumnos */
+            #btn-prev-student,
+            #btn-next-student {
+                flex: 1 1 0%;
+                justify-content: center;
+                min-width: 0;
             }
         }
 
@@ -342,8 +447,18 @@
            Aplicar a todos los botones, opciones de select, y filas clicables
            de tablas para que sean fácilmente pulsables con el dedo. */
         @media (max-width: 768px) {
-            button:not([class*="w-4"]):not([class*="w-3"]):not([class*="h-4"]):not([class*="h-3"]) {
+            button:not([class*="w-4"]):not([class*="w-3"]):not([class*="h-4"]):not([class*="h-3"]),
+            label[for="bulk-upload"],
+            label[for="import-json"] {
                 min-height: 44px;
+            }
+            /* Botones de cierre "×" de los modales: objetivo táctil 44x44 */
+            button.text-2xl {
+                min-width: 44px;
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
             }
             /* Las filas de tablas clicables también deben ser fáciles de tocar */
             #results-body tr {
@@ -432,11 +547,13 @@
             }
         }
 
-        /* 9. Notch /Dynamic Island en Android: algunos dispositivos Android
-           también tienen notch. env() funciona en ambos. */
+        /* 9. Notch / Dynamic Island (Android e iOS): env() devuelve 0 en
+           dispositivos sin notch y en navegadores normales, así que esta regla
+           solo añade espacio cuando existe un recorte real (PWA instalada).
+           Antes usaba max(1rem, ...) y engordaba el navbar también en escritorio. */
         @supports (padding: max(0px)) {
             nav {
-                padding-top: max(1rem, env(safe-area-inset-top));
+                padding-top: max(0px, env(safe-area-inset-top));
             }
         }
 
@@ -447,11 +564,32 @@
             body {
                 user-select: none;
                 -webkit-user-select: none;
+                /* Modo app: desactivar el pull-to-refresh (evita recargas
+                   accidentales al hacer scroll) en cualquier tamaño de pantalla */
+                overscroll-behavior-y: contain;
             }
             /* En modo standalone, permitir selección solo en inputs */
             input, textarea, [contenteditable] {
                 user-select: text;
                 -webkit-user-select: text;
+            }
+        }
+
+        /* 11. Accesibilidad multiplataforma: respetar la preferencia del
+               sistema "reducir movimiento" (desactiva transiciones, fade-in
+               y scroll suave) */
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto !important;
+            }
+            .fade-in {
+                animation: none !important;
+            }
+            *,
+            *::before,
+            *::after {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
             }
         }
     </style>
@@ -477,7 +615,7 @@
                     <svg class="w-9 h-9 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3.5v17h17.5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 20.5v-4M11.75 20.5v-7.5M16 20.5v-11"></path></svg>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800">Perfil Competencial</h1>
-                <p class="text-sm text-gray-600 mt-1">IES Virgen de Villadiego - Peñaflor, Sevilla</p>
+                <p class="text-sm text-gray-600 mt-1">IES Virgen de Villadiego (Peñaflor)</p>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
@@ -501,18 +639,20 @@
 
     <!-- Navbar -->
     <nav class="bg-indigo-700 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3 flex-wrap">
-                <svg class="w-8 h-8 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                <h1 class="text-xl font-bold tracking-tight">Perfil Competencial del Alumnado</h1>
-                <!-- Chip con la versión de la app, leída de CACHE_VERSION en sw.js.
-                     Sustituye al antiguo rótulo del curso académico en vigor. -->
-                <span id="app-version-chip" class="flex-shrink-0 text-[11px] font-semibold tracking-wide bg-indigo-800/60 text-indigo-100 px-2.5 py-1 rounded-full border border-indigo-400/40" title="Versión de la aplicación (según sw.js)">v…</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="text-sm font-medium text-indigo-200 hidden sm:block">
-                    IES Virgen de Villadiego, Peñaflor, Sevilla
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center gap-3">
+            <!-- Bloque de identidad: fila de título + chip, y nombre del
+                 centro debajo (alineado con el texto del título). -->
+            <div class="flex flex-col min-w-0">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <svg class="w-8 h-8 text-indigo-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight">Perfil Competencial del Alumnado</h1>
+                    <!-- Chip con la versión de la app, leída de CACHE_VERSION en sw.js.
+                         Sustituye al antiguo rótulo del curso académico en vigor. -->
+                    <span id="app-version-chip" class="flex-shrink-0 text-[11px] font-semibold tracking-wide bg-indigo-800/60 text-indigo-100 px-2.5 py-1 rounded-full border border-indigo-400/40" title="Versión de la aplicación (según sw.js)">v…</span>
                 </div>
+                <p class="text-sm font-medium text-indigo-200 mt-1 pl-11">IES Virgen de Villadiego</p>
+            </div>
+            <div class="flex items-center gap-4 flex-shrink-0">
                 <!-- Usuario conectado (se rellena por JS) -->
                 <div id="user-bar" class="hidden flex items-center gap-3 text-sm">
                     <span class="text-indigo-100">Conectado:</span>
@@ -535,7 +675,7 @@
         <!-- Controles de Configuración y Unidades Guardadas -->
         <div class="flex flex-col md:flex-row gap-6 mb-8">
             <!-- Gestión: curso académico y usuarios -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
+            <div id="gestion-card" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
                 <h2 class="text-lg font-semibold mb-4 text-gray-700">1. Gestión</h2>
 
                 <!-- Curso académico (solo admin puede cambiarlo/gestionarlo) -->
@@ -564,10 +704,10 @@
             </div>
 
             <!-- Unidades Guardadas -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col">
-                <div class="flex justify-between items-start mb-4">
+            <div id="saved-units-card" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col">
+                <div class="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4">
                     <h2 class="text-lg font-semibold text-gray-700">Unidades Guardadas</h2>
-                    <div class="flex gap-2 flex-wrap justify-end">
+                    <div class="actions-row flex gap-2 flex-wrap justify-end">
                         <button id="btn-export-json" onclick="exportJSON()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-gray-200" title="Guardar a archivo .json">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                             Exportar
@@ -684,7 +824,7 @@
                 <!-- Contenido plegable -->
                 <div id="profile-section-content" class="px-4 pb-4">
                     <div class="flex flex-col sm:flex-row justify-end sm:items-center gap-3 mb-4">
-                        <div class="flex gap-2 justify-end flex-wrap">
+                        <div class="actions-row flex gap-2 justify-end flex-wrap">
                             <button onclick="printCurrentUnit()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm flex items-center gap-1.5 shadow-sm" title="Imprimir / Guardar como PDF esta unidad">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                 Exportar PDF
@@ -1564,7 +1704,7 @@
                     <div style="border-bottom:2px solid #4f46e5;padding-bottom:10px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;">
                         <div>
                             <h1 style="font-size:22px;font-weight:bold;color:#1e1b4b;margin:0;font-family:system-ui;">Perfil Competencial de Alumnado — ${escapeHTML(coursesCache[currentCourseId]?.name || currentCourseId || '')}</h1>
-                            <p style="font-size:12px;color:#4f46e5;font-weight:600;margin:3px 0 0 0;text-transform:uppercase;letter-spacing:0.05em;">IES Virgen de Villadiego - Peñaflor, Sevilla</p>
+                            <p style="font-size:12px;color:#4f46e5;font-weight:600;margin:3px 0 0 0;text-transform:uppercase;letter-spacing:0.05em;">IES Virgen de Villadiego (Peñaflor)</p>
                         </div>
                         <div style="text-align:right;">
                             <span style="background-color:#e0e7ff;color:#3730a3;padding:5px 14px;border-radius:9999px;font-weight:bold;font-size:14px;font-family:system-ui;">${escapeHTML(key)}</span>
