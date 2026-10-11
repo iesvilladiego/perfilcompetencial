@@ -7,7 +7,7 @@
     <!-- PWA: Metadatos -->
     <title>Perfil Competencial ESO - IES Virgen de Villadiego</title>
     <meta name="description" content="Gestión y evaluación competencial del alumnado de ESO (LOMLOE) - IES Virgen de Villadiego, Peñaflor (Sevilla)">
-    <meta name="theme-color" content="#4f46e5">
+    <!-- theme-color: se define más abajo con variantes light/dark (se eliminó el duplicado) -->
     <meta name="color-scheme" content="light">
 
     <!-- Android: color de la barra de estado y navegación del sistema -->
@@ -30,7 +30,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Perfil Competencial">
-    <meta name="mobile-web-app-capable" content="yes">
 
     <!-- PWA: Windows tile -->
     <meta name="msapplication-TileColor" content="#4f46e5">
@@ -241,8 +240,7 @@
            En móvil, reducir el min-width para que quepa más contenido. */
         @media (max-width: 640px) {
             #results-body td:first-child,
-            #results-thead th:first-child,
-            thead th:first-child {
+            #results-thead th:first-child {
                 min-width: 120px !important;
                 max-width: 140px;
                 font-size: 0.75rem;
@@ -316,7 +314,7 @@
 
         /* Botones: en móvil, ocupar todo el ancho para mejor táctil */
         @media (max-width: 640px) {
-            #upload-section-content .mt-8 > .flex-wrap {
+            #upload-section-content > .mt-8.flex-wrap {
                 flex-direction: column;
             }
             #upload-section-content .mt-8 button {
@@ -325,13 +323,8 @@
             }
         }
 
-        /* Banner TITULA/NO TITULA: tamaño de fuente ajustable en móvil */
-        @media (max-width: 640px) {
-            #titula-banner {
-                font-size: 1.25rem !important;
-                padding: 1rem !important;
-            }
-        }
+        /* Banner TITULA/NO TITULA: (eliminado; ahora la sección de Titulación
+           muestra el resultado con sus propios estilos) */
 
         /* Prevenir el "pull-to-refresh" en Android cuando se hace scroll en tablas,
            que causa que la página se recargue accidentalmente. */
@@ -506,10 +499,12 @@
     <!-- Navbar -->
     <nav class="bg-indigo-700 text-white shadow-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <svg class="w-8 h-8 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 <h1 class="text-xl font-bold tracking-tight">Perfil Competencial del Alumnado</h1>
-                <h2 id="nav-course-name" class="text-xl font-bold tracking-tight text-indigo-200 hidden"></h2>
+                <!-- Chip con la versión de la app, leída de CACHE_VERSION en sw.js.
+                     Sustituye al antiguo rótulo del curso académico en vigor. -->
+                <span id="app-version-chip" class="flex-shrink-0 text-[11px] font-semibold tracking-wide bg-indigo-800/60 text-indigo-100 px-2.5 py-1 rounded-full border border-indigo-400/40" title="Versión de la aplicación (según sw.js)">v…</span>
             </div>
             <div class="flex items-center gap-4">
                 <div class="text-sm font-medium text-indigo-200 hidden sm:block">
@@ -651,6 +646,13 @@
                     </label>
                 </div>
 
+                <!-- Resumen de archivos asignados por competencia (en memoria).
+                     Sustituye a la antigua rejilla de inputs individuales, eliminada del HTML. -->
+                <div class="mb-2">
+                    <p class="text-xs font-medium text-gray-500 mb-2">Archivos asignados (los no asignados aparecen en gris):</p>
+                    <div id="selected-files-summary" class="flex flex-wrap gap-2" aria-live="polite"></div>
+                </div>
+
                 <div class="mt-8 flex flex-wrap gap-4 items-center">
                     <button id="btn-process-files" onclick="processFiles()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2 transform active:scale-95">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
@@ -694,16 +696,12 @@
                     <div id="table-wrapper" class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-300">
                         <div class="table-container w-full overflow-x-auto">
                             <table class="min-w-full text-sm text-left text-gray-600">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-100 shadow-sm">
+                                <thead id="results-thead" class="text-xs text-gray-700 uppercase bg-gray-100 shadow-sm">
                                     <tr>
-                                        <th scope="col" class="px-6 py-4 font-bold rounded-tl-lg bg-gray-100 border-b border-gray-200 min-w-[120px]">Alumno/a</th>
-                                        <!-- Competencias generadas dinámicamente -->
-                                        <script>
-                                            // Constante local: este script se ejecuta durante el parsing,
-                                            // antes de que COMPETENCES_ORDER (definida más abajo) exista.
-                                            ['CCL', 'CP', 'STEM', 'CD', 'CPSAA', 'CC', 'CE', 'CCEC'].forEach(c => document.write(`<th scope="col" class="px-4 py-4 text-center font-bold border-b border-gray-200 bg-gray-100">${c}</th>`));
-                                        </script>
-                                        <th scope="col" class="px-6 py-4 text-center font-extrabold bg-indigo-50 text-indigo-900 border-b border-indigo-100 rounded-tr-lg">Media Global</th>
+                                        <th scope="col" class="px-6 py-4 font-bold rounded-tl-lg bg-gray-100 border-b border-gray-200 min-w-[120px] sticky left-0 z-20">Alumno/a</th>
+                                        <!-- Competencias generadas dinámicamente por initResultsTableHeader()
+                                             usando la constante única COMPETENCES_ORDER del script principal -->
+                                        <th scope="col" id="th-global" class="px-6 py-4 text-center font-extrabold bg-indigo-50 text-indigo-900 border-b border-indigo-100 rounded-tr-lg">Media Global</th>
                                     </tr>
                                 </thead>
                                 <tbody id="results-body">
@@ -1086,11 +1084,51 @@
     <div id="print-area" aria-hidden="true"></div>
 
     <script>
-        // Configuración principal
+        // ============================================================
+        //  CONFIGURACIÓN PRINCIPAL Y ESTADO GLOBAL DE LA APLICACIÓN
+        // ============================================================
+        // (Antes el estado estaba disperso en varias secciones del script;
+        //  ahora se declara todo aquí, al principio, para tener una única
+        //  fuente de verdad y evitar problemas de orden de declaración.)
         const COMPETENCES_ORDER = ['CCL', 'CP', 'STEM', 'CD', 'CPSAA', 'CC', 'CE', 'CCEC'];
-        const savedUnits = {}; // Almacenamiento en memoria de la sesión
+
+        // Usuario bajo el que se guardan/leen las unidades en la BD,
+        // para que el admin cargue los datos y todo el profesorado los vea.
+        const DATA_USER = 'admin';
+
+        // --- Datos de la sesión ---
+        const savedUnits = {};        // Almacenamiento en memoria de la sesión
         let currentProcessedData = null; // Guarda los datos procesados en pantalla
         let selectAllPdfState = true;
+
+        // --- Archivos seleccionados por competencia (carga masiva) ---
+        // La antigua rejilla de inputs individuales (file-CCL, file-CP, ...)
+        // fue eliminada del HTML, por lo que el estado de los archivos
+        // seleccionados se guarda ahora en memoria y no en el DOM.
+        const selectedFiles = {};     // { CCL: File, CP: File, ... }
+
+        // --- Sesión / usuarios ---
+        let currentUser = null;       // { username, role, isAdmin }
+        let firebaseReady = false;
+        let usersCache = null;        // Caché local del listado de usuarios (admin)
+        let editingUsername = null;   // Username que se está editando (null = crear nuevo)
+
+        // --- Cursos académicos ---
+        let currentCourseId = null;       // id del curso activo
+        let coursesCache = {};            // {cursoId: {name, createdAt, updatedAt, finalizado}}
+        let _coursesSubscription = null;  // suscripción a /cursos
+        let _activeCourseSubscription = null;  // suscripción a /activeCourse
+        let editingCourseId = null;       // cursoId que se está editando (null = crear)
+
+        // --- Suscripción en tiempo real a las unidades ---
+        let _unitsSubscription = null;
+        // Flag para evitar que la suscripción en tiempo real sobrescriba cambios
+        // locales que aún no se han guardado en la BD.
+        let _suppressNextSync = false;
+
+        // --- Elementos del DOM usados con frecuencia ---
+        const modal = document.getElementById('custom-modal');
+        const loading = document.getElementById('loading-overlay');
 
         // ============================================================
         //  CORRELACIÓN OBJETIVOS DE ETAPA ESO ↔ DESCRIPTORES OPERATIVOS
@@ -1173,9 +1211,56 @@
             return Math.ceil(total / 2);
         }
 
-        // Elementos del DOM
-        const modal = document.getElementById('custom-modal');
-        const loading = document.getElementById('loading-overlay');
+        // (modal y loading ya están declarados en el bloque de estado global)
+
+        // ============================================================
+        //  ARCHIVOS SELECCIONADOS POR COMPETENCIA (en memoria)
+        // ============================================================
+        // La antigua rejilla de inputs individuales (file-CCL, ...) fue eliminada
+        // del HTML, por lo que los archivos se guardan en el objeto selectedFiles.
+        // Esto corrige los errores "Cannot set properties of null" que ocurrían
+        // al asignar archivos a inputs inexistentes.
+
+        // ¿Hay algún archivo seleccionado?
+        function hasAnySelectedFile() {
+            return COMPETENCES_ORDER.some(comp => selectedFiles[comp]);
+        }
+
+        // Vacía silenciosamente la selección de archivos (sin comprobación de permisos).
+        function resetSelectedFiles() {
+            COMPETENCES_ORDER.forEach(comp => delete selectedFiles[comp]);
+            updateSelectedFilesSummary();
+        }
+
+        // Renderiza el resumen visual de archivos asignados (chips por competencia).
+        // Sustituye a la antigua función updateFileLabel(), que actualizaba etiquetas
+        // de la rejilla individual que ya no existe.
+        function updateSelectedFilesSummary() {
+            const container = document.getElementById('selected-files-summary');
+            if (!container) return;
+            container.innerHTML = '';
+
+            COMPETENCES_ORDER.forEach(comp => {
+                const file = selectedFiles[comp];
+                const chip = document.createElement('span');
+                if (file) {
+                    chip.className = 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 max-w-full';
+                    chip.title = file.name;
+                    const compLabel = document.createElement('span');
+                    compLabel.className = 'font-bold flex-shrink-0';
+                    compLabel.textContent = comp;
+                    const fileName = document.createElement('span');
+                    fileName.className = 'max-w-[160px] truncate';
+                    fileName.textContent = file.name;
+                    chip.append(compLabel, fileName);
+                } else {
+                    chip.className = 'inline-flex items-center text-xs font-medium px-2.5 py-1.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200';
+                    chip.textContent = comp;
+                    chip.title = 'Sin archivo asignado';
+                }
+                container.appendChild(chip);
+            });
+        }
 
         // --- CARGA MASIVA ---
         function handleBulkUpload(event) {
@@ -1194,20 +1279,17 @@
                 });
 
                 if (file) {
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    const input = document.getElementById(`file-${comp}`);
-                    input.files = dataTransfer.files;
-                    
-                    updateFileLabel(comp);
+                    selectedFiles[comp] = file;
                     matchedFiles.add(file.name);
                     countMatches++;
                 }
             });
 
+            updateSelectedFilesSummary();
+
             if (countMatches < COMPETENCES_ORDER.length) {
-                const faltantes = COMPETENCES_ORDER.filter(c => !document.getElementById(`file-${c}`).files[0]);
-                showModal('Asignación incompleta', `Se asignaron ${countMatches} archivos. Faltan por identificar: ${faltantes.join(', ')}. Puedes seleccionarlos manualmente.`, [
+                const faltantes = COMPETENCES_ORDER.filter(c => !selectedFiles[c]);
+                showModal('Asignación incompleta', `Se asignaron ${countMatches} archivos. Faltan por identificar: ${faltantes.join(', ')}. Vuelve a usar "Seleccionar Varios Archivos" e incluye los que faltan (el nombre del archivo debe contener el código de la competencia, p.ej. CD.xls).`, [
                     { text: 'Entendido', type: 'primary' }
                 ]);
             }
@@ -1217,12 +1299,9 @@
 
         function clearAllFiles() {
             if (!requireAdmin()) return;
-            COMPETENCES_ORDER.forEach(comp => {
-                const input = document.getElementById(`file-${comp}`);
-                if (input) input.value = '';
-                updateFileLabel(comp);
-            });
-            document.getElementById('bulk-upload').value = '';
+            resetSelectedFiles();
+            const bulk = document.getElementById('bulk-upload');
+            if (bulk) bulk.value = '';
         }
 
         // ============================================================
@@ -1288,29 +1367,21 @@
         //  SEGURIDAD: CAMBIO DE NIVEL/UNIDAD OBLIGA A RECARGAR ARCHIVOS
         // ============================================================
         // Cuando el usuario cambia el nivel o la unidad, si hay archivos
-        // cargados (ya seleccionados en los inputs), se limpian automáticamente.
-        // Esto evita que se procesen en un grupo datos que correspondían a otro.
+        // seleccionados, se limpian automáticamente. Esto evita que se
+        // procesen en un grupo datos que correspondían a otro.
         //
         // Nota: asignar select.value programáticamente (p.ej. en loadUnit) NO
         // dispara el evento 'change', así que no hace falta un flag de supresión.
+        // (Los selects solo son accesibles para el admin: la sección de carga
+        //  está oculta para los usuarios normales.)
         function onGroupChanged() {
-            // Solo el admin puede cambiar de grupo; si no es admin, no hacer nada.
-            // Comprobar si hay algún archivo cargado en los inputs
-            let anyFile = false;
-            for (const comp of COMPETENCES_ORDER) {
-                const input = document.getElementById(`file-${comp}`);
-                if (input && input.files && input.files.length > 0) {
-                    anyFile = true;
-                    break;
-                }
-            }
-
-            if (anyFile) {
+            // Comprobar si hay algún archivo seleccionado (en memoria)
+            if (hasAnySelectedFile()) {
                 // Hay archivos cargados: limpiarlos y avisar al usuario.
                 // No usamos showModal aquí porque onGroupChanged se dispara durante
                 // el evento change del select, y un modal sería intrusivo. En su
                 // lugar, limpiamos silenciosamente y mostramos un aviso visual breve.
-                clearAllFiles();
+                resetSelectedFiles();
                 showGroupChangeWarning();
             }
 
@@ -1733,13 +1804,14 @@
                 return;
             }
 
+            // Recoger los archivos seleccionados (en memoria, tras la carga masiva)
             const filesData = {};
-            let missingFiles = [];
+            const missingFiles = [];
 
             COMPETENCES_ORDER.forEach(comp => {
-                const input = document.getElementById(`file-${comp}`);
-                if (input.files && input.files[0]) {
-                    filesData[comp] = input.files[0];
+                const file = selectedFiles[comp];
+                if (file) {
+                    filesData[comp] = file;
                 } else {
                     missingFiles.push(comp);
                 }
@@ -2082,7 +2154,10 @@
 
             if (isNaN(studentIdx) || !currentProcessedData || !currentProcessedData[studentIdx]) {
                 tbody.innerHTML = `<tr><td colspan="${ALL_DESCRIPTORS.length + 2}" class="px-4 py-8 text-center text-gray-400">Selecciona un alumno para ver el detalle de objetivos.</td></tr>`;
-                updateTitulaBanner(null);
+                // Ocultar la sección de titulación (la antigua función
+                // updateTitulaBanner() fue eliminada y no existía: provocaba
+                // un ReferenceError al llegar aquí).
+                updateTitulationSection(null, null);
                 return;
             }
 
@@ -2099,7 +2174,9 @@
                         <p class="text-sm mt-2">Para ver la tabla de objetivos, vuelve a cargar los 8 archivos de calificaciones y pulsa <strong>"Procesar Calificaciones"</strong>. Los datos se actualizarán en la base de datos.</p>
                     </div>
                 </td></tr>`;
-                updateTitulaBanner(null);
+                // Ocultar la sección de titulación (sustituye a la inexistente
+                // updateTitulaBanner(null)).
+                updateTitulationSection(null, null);
                 return;
             }
 
@@ -2275,8 +2352,29 @@
             if (idx < 0) idx = currentProcessedData.length - 1;
             if (idx >= currentProcessedData.length) idx = 0;
             select.value = String(idx);
-            renderObjectivesTable();
+            // selectStudentInObjectives ya actualiza el selector, renderiza la
+            // tabla de objetivos y resalta la fila (antes se renderizaba dos veces).
             selectStudentInObjectives(idx);
+        }
+
+        // ============================================================
+        //  HELPERS COMPARTIDOS (evitan lógica duplicada)
+        // ============================================================
+
+        // Ordena alumnos por nombre con localeCompare (para que apellidos con
+        // tilde como Ávila o Écija queden en su posición alfabética correcta).
+        function sortStudentsByName(a, b) {
+            return (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+        }
+
+        // Lista de ids de curso ordenados por nombre (compartida por
+        // applyCoursesToUI y refreshCoursesList, que duplicaban el código).
+        function getSortedCourseIds() {
+            return Object.keys(coursesCache).sort((a, b) => {
+                const na = coursesCache[a]?.name || a;
+                const nb = coursesCache[b]?.name || b;
+                return na.localeCompare(nb, 'es', { sensitivity: 'base' });
+            });
         }
 
         // --- GESTIÓN DE UNIDADES (MEMORIA + BD) ---
@@ -2388,6 +2486,21 @@
             ]);
         }
 
+        // Pinta en pantalla los datos de una unidad: normaliza cada estudiante
+        // (para asegurar que descriptors/competences/objectives son objetos,
+        // ya que Firebase puede convertir claves numéricas en arrays o perderlas),
+        // los reordena por nombre y renderiza la tabla.
+        // Antes esta lógica estaba duplicada en loadUnit() y en la suscripción
+        // en tiempo real de loadSavedUnitsFromDB().
+        function displayUnitData(unitData, key) {
+            currentProcessedData = (unitData.data || [])
+                .map(s => normalizeStudent(s))
+                .sort(sortStudentsByName);
+            renderTable(currentProcessedData);
+            document.getElementById('results-section').classList.remove('hidden');
+            document.getElementById('current-group-label').textContent = key;
+        }
+
         function loadUnit(key) {
             const unitData = savedUnits[key];
             if (!unitData) return;
@@ -2398,18 +2511,7 @@
             document.getElementById('select-level').value = unitData.level;
             document.getElementById('select-unit').value = unitData.unit;
 
-            // Normalizar cada estudiante para asegurar que descriptors existe y es un objeto.
-            // Esto es necesario si la unidad se guardó con una versión anterior del código
-            // que no guardaba descriptores, o si Firebase transformó la estructura.
-            // Reordenar por nombre con localeCompare para que los apellidos con tilde
-            // (Ávila, Écija, etc.) aparezcan en su posición alfabética correcta.
-            currentProcessedData = (unitData.data || [])
-                .map(s => normalizeStudent(s))
-                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
-            renderTable(currentProcessedData);
-
-            document.getElementById('results-section').classList.remove('hidden');
-            document.getElementById('current-group-label').textContent = key;
+            displayUnitData(unitData, key);
             setSyncStatus('saved');
         }
 
@@ -2474,13 +2576,8 @@
         // (ver README al final del archivo). Si necesitas máxima seguridad, deberás
         // usar Firebase Auth con email + un Cloud Function que haga de pasarela.
 
-        // Estado de la sesión actual
-        let currentUser = null;       // { username, role, isAdmin }
-        let firebaseReady = false;
-        // Caché local del listado de usuarios (admin)
-        let usersCache = null;
-        // Username que se está editando en el editor (null = crear nuevo)
-        let editingUsername = null;
+        // (currentUser, firebaseReady, usersCache y editingUsername están
+        //  declarados en el bloque de estado global, al inicio del script)
 
         // ============================================================
         //  HASH DE CONTRASEÑAS (PBKDF2 vía Web Crypto API)
@@ -2781,6 +2878,7 @@
             // Limpiar estado local
             Object.keys(savedUnits).forEach(k => delete savedUnits[k]);
             currentProcessedData = null;
+            resetSelectedFiles(); // limpiar también los archivos seleccionados en memoria
             document.getElementById('results-section').classList.add('hidden');
             setSyncStatus('idle');
             updateSavedUnitsUI();
@@ -2831,11 +2929,8 @@
         //   = { data, level, unit, timestamp, savedAt }
         // Los datos están aislados por username.
 
-        // Referencia a la suscripción en tiempo real (para poder cancelarla al logout)
-        let _unitsSubscription = null;
-        // Flag para evitar que la suscripción en tiempo real sobrescriba cambios locales
-        // que aún no se han guardado en la BD.
-        let _suppressNextSync = false;
+        // (_unitsSubscription y _suppressNextSync están declarados en el bloque
+        //  de estado global, al inicio del script)
 
         // Actualiza el indicador visual de sincronización en la UI.
         // Estados: 'idle' (sin datos), 'syncing' (sincronizando), 'saved' (guardado), 'error' (error)
@@ -2875,6 +2970,13 @@
         // Las unidades se aislan por (username, curso académico).
         async function loadSavedUnitsFromDB() {
             if (!currentUser) return;
+            // Cancelar siempre la suscripción anterior (antes no se cancelaba
+            // si currentCourseId pasaba a null, y la suscripción antigua
+            // seguía viva actualizando savedUnits con datos de otro curso).
+            if (_unitsSubscription) {
+                try { _unitsSubscription(); } catch (e) {}
+                _unitsSubscription = null;
+            }
             if (!currentCourseId) {
                 // Sin curso activo: limpiar savedUnits y no suscribirse
                 Object.keys(savedUnits).forEach(k => delete savedUnits[k]);
@@ -2883,18 +2985,12 @@
             }
             try {
                 const M = window.fbModules;
-                // Cancelar suscripción anterior si existe
-                if (_unitsSubscription) {
-                    _unitsSubscription();
-                    _unitsSubscription = null;
-                }
 
-                // Suscripción en tiempo real a /data/{cursoId}
-                // Los datos se guardan bajo el usuario 'admin' y todos los usuarios
-                // los consultan desde ahí. Así el admin carga los archivos y todos
-                // los profesores pueden verlos en tiempo real.
-                const dataUser = 'admin';
-                const unitsRef = M.ref(window.fbDb, `${window.fbConfig.DB_ROOT}/data/${dataUser}/${currentCourseId}`);
+                // Suscripción en tiempo real a /data/{DATA_USER}/{cursoId}
+                // Los datos se guardan bajo el usuario DATA_USER ('admin') y
+                // todos los usuarios los consultan desde ahí. Así el admin carga
+                // los archivos y todos los profesores pueden verlos en tiempo real.
+                const unitsRef = M.ref(window.fbDb, `${window.fbConfig.DB_ROOT}/data/${DATA_USER}/${currentCourseId}`);
                 _unitsSubscription = M.onValue(unitsRef, (snap) => {
                     // Si este evento lo disparó nuestra propia escritura, ignoramos
                     // la actualización de la UI para no pisar cambios locales recientes.
@@ -2928,11 +3024,7 @@
                         const unit = document.getElementById('select-unit').value;
                         const activeKey = getUnitKey(lvl, unit);
                         if (savedUnits[activeKey]) {
-                            // Reordenar por nombre con localeCompare al cargar desde la BD
-                            currentProcessedData = (savedUnits[activeKey].data || [])
-                                .map(s => normalizeStudent(s))
-                                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
-                            renderTable(currentProcessedData);
+                            displayUnitData(savedUnits[activeKey], activeKey);
                         }
                     }
                 });
@@ -2954,8 +3046,8 @@
             try {
                 const M = window.fbModules;
                 _suppressNextSync = true;
-                // Los datos se guardan bajo 'admin' para que todos los usuarios los vean
-                await M.set(M.ref(window.fbDb, `${window.fbConfig.DB_ROOT}/data/admin/${currentCourseId}/${key}`), unitData);
+                // Los datos se guardan bajo DATA_USER para que todos los usuarios los vean
+                await M.set(M.ref(window.fbDb, `${window.fbConfig.DB_ROOT}/data/${DATA_USER}/${currentCourseId}/${key}`), unitData);
                 return true;
             } catch (err) {
                 _suppressNextSync = false;
@@ -2971,7 +3063,7 @@
             try {
                 const M = window.fbModules;
                 _suppressNextSync = true;
-                await M.remove(M.ref(window.fbDb, `${window.fbConfig.DB_ROOT}/data/admin/${currentCourseId}/${key}`));
+                await M.remove(M.ref(window.fbDb, `${window.fbConfig.DB_ROOT}/data/${DATA_USER}/${currentCourseId}/${key}`));
                 return true;
             } catch (err) {
                 _suppressNextSync = false;
@@ -2985,13 +3077,10 @@
         // ============================================================
         //  GESTIÓN DE CURSOS ACADÉMICOS (SOLO ADMIN)
         // ============================================================
-        // Estado global del curso activo (cursoId seleccionado por el admin).
+        // (currentCourseId, coursesCache, _coursesSubscription,
+        //  _activeCourseSubscription y editingCourseId están declarados en el
+        //  bloque de estado global, al inicio del script)
         // Todos los usuarios ven el mismo curso activo (lo establece el admin).
-        let currentCourseId = null;       // id del curso activo
-        let coursesCache = {};            // {cursoId: {name, createdAt, updatedAt, finalizado}}
-        let _coursesSubscription = null;  // suscripción a /cursos
-        let _activeCourseSubscription = null;  // suscripción a /activeCourse
-        let editingCourseId = null;       // cursoId que se está editando (null = crear)
 
         // ============================================================
         //  LÓGICA DE FINALIZACIÓN DE CURSOS
@@ -3121,12 +3210,8 @@
             const select = document.getElementById('select-course');
             select.innerHTML = '';
 
-            const courseIds = Object.keys(coursesCache).sort((a, b) => {
-                // Ordenar por nombre (los cursos normalmente son "2024-2025" etc.)
-                const na = coursesCache[a]?.name || a;
-                const nb = coursesCache[b]?.name || b;
-                return na.localeCompare(nb, 'es', { sensitivity: 'base' });
-            });
+            // Ordenar por nombre (los cursos normalmente son "2024-2025" etc.)
+            const courseIds = getSortedCourseIds();
 
             if (courseIds.length === 0) {
                 select.innerHTML = '<option value="">(Sin cursos. Pide al admin que cree uno.)</option>';
@@ -3160,19 +3245,9 @@
             } else {
                 select.title = 'Selecciona el curso académico activo para todos los usuarios';
             }
-
-            // Actualizar el nombre del curso en el navbar (debajo del título)
-            const navCourseName = document.getElementById('nav-course-name');
-            if (navCourseName) {
-                if (currentCourseId && coursesCache[currentCourseId]) {
-                    const name = coursesCache[currentCourseId].name || currentCourseId;
-                    const finished = isCourseFinished(currentCourseId);
-                    navCourseName.textContent = finished ? `${name} (Finalizado)` : name;
-                    navCourseName.classList.remove('hidden');
-                } else {
-                    navCourseName.classList.add('hidden');
-                }
-            }
+            // (El rótulo del curso en el navbar, #nav-course-name, fue eliminado:
+            //  en su lugar hay un chip con la versión de la app, que se rellena
+            //  una sola vez en la inicialización con loadAppVersion()).
         }
 
         // Cuando el admin cambia el selector de curso en la UI.
@@ -3271,11 +3346,7 @@
             listEl.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">Cargando cursos...</td></tr>';
 
             try {
-                const courseIds = Object.keys(coursesCache).sort((a, b) => {
-                    const na = coursesCache[a]?.name || a;
-                    const nb = coursesCache[b]?.name || b;
-                    return na.localeCompare(nb, 'es', { sensitivity: 'base' });
-                });
+                const courseIds = getSortedCourseIds();
 
                 if (courseIds.length === 0) {
                     listEl.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">No hay cursos creados todavía. Pulsa "Añadir curso" para crear el primero.</td></tr>';
@@ -3286,9 +3357,12 @@
                     const name = coursesCache[id]?.name || id;
                     const isActive = id === currentCourseId;
                     const finished = isCourseFinished(id);
+                    // El badge de estado distingue "En curso" (no finalizado) del
+                    // badge verde "Activo" (curso seleccionado). Antes ambos decían
+                    // "Activo" y el curso activo mostraba dos badges iguales.
                     const finishedBadge = finished
                         ? '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-200 text-gray-700">Finalizado</span>'
-                        : '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700">Activo</span>';
+                        : '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700">En curso</span>';
 
                     // Botón de finalizar/reactivar (solo admin)
                     let finishBtn = '';
@@ -3739,17 +3813,62 @@
         // ============================================================
         //  INICIALIZACIÓN
         // ============================================================
+
+        // Genera las celdas de cabecera de la tabla de resultados (una por
+        // competencia). Antes se hacía con un <script> + document.write() dentro
+        // del thead, que duplicaba la lista de competencias: ahora se usa la
+        // única constante COMPETENCES_ORDER.
+        function initResultsTableHeader() {
+            const globalTh = document.getElementById('th-global');
+            if (!globalTh) return;
+            // Evitar duplicados si se llamara más de una vez
+            if (document.getElementById('th-comp-CCL')) return;
+            COMPETENCES_ORDER.forEach(comp => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.id = `th-comp-${comp}`;
+                th.className = 'px-4 py-4 text-center font-bold border-b border-gray-200 bg-gray-100';
+                th.textContent = comp;
+                globalTh.before(th);
+            });
+        }
+
+        // Lee la versión de la app desde sw.js (constante CACHE_VERSION) y la
+        // muestra en el chip del banner (#app-version-chip).
+        // Si no se puede leer (p.ej. abrir el archivo sin servidor), muestra "v?".
+        async function loadAppVersion() {
+            const chip = document.getElementById('app-version-chip');
+            if (!chip) return;
+            try {
+                const resp = await fetch('sw.js', { cache: 'no-store' });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const source = await resp.text();
+                const match = source.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+                if (match) {
+                    chip.textContent = match[1];
+                    chip.title = `Versión de la aplicación ${match[1]} (según CACHE_VERSION de sw.js)`;
+                } else {
+                    chip.textContent = 'v?';
+                    chip.title = 'No se encontró la versión en sw.js';
+                }
+            } catch (err) {
+                console.warn('[Versión] No se pudo leer sw.js:', err.message);
+                chip.textContent = 'v?';
+                chip.title = 'No se pudo determinar la versión de la aplicación';
+            }
+        }
+
+        // Inicialización de la interfaz estática (no depende de Firebase)
+        initResultsTableHeader();
+        updateSelectedFilesSummary();
+        loadAppVersion();
+
         function initFirebase() {
             // El script module ya cargó Firebase y lo expuso en window.fbDb
             firebaseReady = true;
             // Restaurar sesión si existe (sessionStorage), o mostrar login
             restoreSession();
         }
-
-        // Inicializar
-        window.onload = () => {
-            // No hay inicialización de grid individual: se usa solo carga masiva
-        };
 
         // Esperar a que Firebase esté listo (evento 'firebase-ready' disparado por el script module).
         // Si el CDN de Firebase no carga (red caída, firewall, etc.), el evento nunca se dispara
@@ -3843,4 +3962,4 @@
         });
     </script>
 </body>
-</html>
+</html>
