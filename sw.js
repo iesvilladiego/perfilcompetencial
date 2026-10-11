@@ -4,8 +4,12 @@
 //   - Network-first para las dependencias CDN (Tailwind, XLSX, Firebase)
 //     con fallback a caché si no hay conexión
 //   - Las llamadas a Firebase van siempre a la red (no se cachean)
+//
+// IMPORTANTE: CACHE_VERSION es la versión de la app. La página principal
+// la lee (fetch de sw.js + expresión regular) para mostrarla en el chip
+// del banner (#app-version-chip). Recuerda actualizarla en cada despliegue.
 
-const CACHE_VERSION = 'v1.4.8';
+const CACHE_VERSION = 'v1.5.0';
 const CACHE_NAME = 'perfil-competencial-' + CACHE_VERSION;
 
 // Recursos estáticos propios (se cachean al instalar)
@@ -104,10 +108,13 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         }).catch(() => {
-          // Si es navegación y no hay cache, devolver index.html cached
+          // Si es navegación y no hay cache, devolver index.html cacheado.
+          // Si tampoco existiera, se devuelve una respuesta de error de red
+          // (respondWith nunca debe resolver undefined).
           if (request.mode === 'navigate') {
-            return caches.match('./index.html');
+            return caches.match('./index.html').then((resp) => resp || Response.error());
           }
+          return Response.error();
         });
       })
     );
@@ -127,7 +134,7 @@ self.addEventListener('fetch', (event) => {
             });
           }
           return networkResponse;
-        }).catch(() => cachedResponse); // Si no hay red, usar cache
+        }).catch(() => cachedResponse || Response.error()); // Si no hay red, usar cache
         return cachedResponse || networkFetch;
       })
     );
@@ -144,7 +151,7 @@ self.addEventListener('fetch', (event) => {
         });
       }
       return networkResponse;
-    }).catch(() => caches.match(request))
+    }).catch(() => caches.match(request).then((resp) => resp || Response.error()))
   );
 });
 
