@@ -620,7 +620,7 @@
                     <svg class="w-9 h-9 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3.5v17h17.5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 20.5v-4M11.75 20.5v-7.5M16 20.5v-11"></path></svg>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800">Perfil Competencial</h1>
-                <p class="text-sm text-gray-600 mt-1">IES Virgen de Villadiego - Peñaflor, Sevilla</p>
+                <p class="text-sm text-gray-600 mt-1">IES Virgen de Villadiego</p>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
@@ -1247,6 +1247,9 @@
         // --- Datos de la sesión ---
         const savedUnits = {};        // Almacenamiento en memoria de la sesión
         let currentProcessedData = null; // Guarda los datos procesados en pantalla
+        let currentUnitKey = null;    // Clave de la unidad realmente mostrada en pantalla
+                                      // (evita imprimir datos de un grupo con la etiqueta
+                                      //  de otro si el usuario cambia los selects)
         let selectAllPdfState = true;
 
         // --- Archivos seleccionados por competencia (carga masiva) ---
@@ -1592,16 +1595,38 @@
                     if (typeof importedData !== 'object' || importedData === null) throw new Error("Formato inválido");
 
                     let added = 0;
+                    let descartadas = 0;
                     const importPromises = [];
+                    // Claves peligrosas en un objeto JS: asignar "__proto__" (o similar)
+                    // a savedUnits contaminaría su prototipo en lugar de añadir una unidad.
+                    const CLAVES_PELIGROSAS = ['__proto__', 'constructor', 'prototype'];
                     for (const key in importedData) {
+                        if (CLAVES_PELIGROSAS.includes(key)) { descartadas++; continue; }
+
+                        // La clave debe ser segura como ruta de Firebase: no vacía y sin
+                        // caracteres prohibidos (una clave vacía apuntaría al nodo del
+                        // curso entero y SOBRESCRIBIRÍA todas las unidades al sincronizar).
+                        if (typeof key !== 'string' || key === '' || key.length > 60 || /[.\/$#[\]]/.test(key)) {
+                            descartadas++;
+                            continue;
+                        }
+
+                        // Validar la estructura de cada unidad: debe ser un objeto con un
+                        // array "data" de estudiantes. Antes se aceptaba cualquier cosa
+                        // (null, cadenas...) y corrompía savedUnits y la BD, rompiendo
+                        // después la carga en pantalla y la impresión de esas unidades.
+                        const unitData = importedData[key];
+                        if (!unitData || typeof unitData !== 'object' || Array.isArray(unitData) || !Array.isArray(unitData.data)) {
+                            descartadas++;
+                            continue;
+                        }
+
                         if (Object.keys(savedUnits).length >= 8 && !savedUnits[key]) {
                             continue;
                         }
+
                         // Normalizar los estudiantes importados (pueden venir sin descriptors)
-                        const unitData = importedData[key];
-                        if (unitData && Array.isArray(unitData.data)) {
-                            unitData.data = unitData.data.map(s => normalizeStudent(s));
-                        }
+                        unitData.data = unitData.data.map(s => normalizeStudent(s));
                         savedUnits[key] = unitData;
                         added++;
                         // Sincronizar con Firebase (sin await: en paralelo)
@@ -1611,7 +1636,13 @@
                     updateSavedUnitsUI();
 
                     if (added > 0) {
-                        showModal('Importación exitosa', `Se han importado/actualizado ${added} unidades correctamente. Se están sincronizando con la base de datos.`, [{ text: 'Aceptar', type: 'emerald' }]);
+                        let msg = `Se han importado/actualizado ${added} unidades correctamente. Se están sincronizando con la base de datos.`;
+                        if (descartadas > 0) {
+                            msg += `\n\nSe descartaron ${descartadas} entradas con formato no válido (se esperaba un objeto con la lista de alumnos "data").`;
+                        }
+                        showModal('Importación exitosa', msg, [{ text: 'Aceptar', type: 'emerald' }]);
+                    } else if (descartadas > 0) {
+                        showModal('Nada importado', `El archivo no contiene ninguna unidad válida: se han descartado ${descartadas} entradas (se esperaba un objeto con la lista de alumnos "data" y una clave sin caracteres especiales).`, [{ text: 'Cerrar', type: 'danger' }]);
                     } else {
                         showModal('Límite alcanzado', 'No se han podido importar unidades. El sistema ya contiene el máximo de 8 unidades.', [{ text: 'Entendido', type: 'primary' }]);
                     }
@@ -1639,9 +1670,11 @@
             keys.forEach(key => {
                 const item = document.createElement('label');
                 item.className = 'flex items-center gap-3 p-2.5 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-emerald-100';
+                // escapeHTML en la clave: puede contener caracteres especiales si la
+                // unidad llegó de un JSON importado (evita romper el HTML o inyectar código).
                 item.innerHTML = `
-                    <input type="checkbox" name="pdf-unit-checkbox" value="${key}" checked class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
-                    <span class="text-sm font-semibold text-gray-700">${key}</span>
+                    <input type="checkbox" name="pdf-unit-checkbox" value="${escapeHTML(key)}" checked class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                    <span class="text-sm font-semibold text-gray-700">${escapeHTML(key)}</span>
                 `;
                 listContainer.appendChild(item);
             });
@@ -1847,9 +1880,13 @@
                 showModal('Sin datos', 'No hay datos de unidad cargados en pantalla. Carga o procesa archivos primero.', [{ text: 'Entendido', type: 'primary' }]);
                 return;
             }
-            const lvl = document.getElementById('select-level').value;
-            const unit = document.getElementById('select-unit').value;
-            const key = getUnitKey(lvl, unit);
+            // Usar la clave de la unidad REALMENTE mostrada en pantalla: si el usuario
+            // cambió los selects sin procesar de nuevo, la etiqueta del informe debe
+            // seguir correspondiéndose con los datos que se van a imprimir.
+            const key = currentUnitKey || getUnitKey(
+                document.getElementById('select-level').value,
+                document.getElementById('select-unit').value
+            );
             doNativePrint([key], currentProcessedData);
         }
 
@@ -1892,7 +1929,20 @@
 
             // Pequeño retardo para asegurar que el navegador aplique los estilos @media print.
             setTimeout(() => {
-                window.print();
+                try {
+                    // window.print no existe en algunos contextos (p. ej. PWA instalada
+                    // en iOS en modo standalone). Sin este control, la excepción dejaría
+                    // el body en modo .printing-pdf (toda la interfaz oculta) sin que el
+                    // evento afterprint llegara nunca: la app quedaría congelada.
+                    if (typeof window.print !== 'function') {
+                        throw new Error('PRINT_UNAVAILABLE');
+                    }
+                    window.print();
+                } catch (err) {
+                    cleanup();
+                    console.warn('[Impresión] No se pudo abrir el diálogo de impresión:', err);
+                    showModal('No se puede imprimir', 'Este navegador no permite abrir el diálogo de impresión desde aquí (suele ocurrir con la app instalada en iOS). Abre la aplicación en Safari o Chrome desde el navegador y usa su opción de imprimir o "Guardar como PDF".', [{ text: 'Entendido', type: 'primary' }]);
+                }
             }, 100);
         }
 
@@ -1965,7 +2015,10 @@
             }
 
             const numStr = cell.trim().replace(',', '.');
-            if (numStr !== '' && !isNaN(parseFloat(numStr)) && isFinite(numStr)) {
+            // isFinite sobre el parseFloat (no sobre la cadena): celdas como
+            // "8.5 (Bien)" o "7 Bien" antes se descartaban porque isFinite(cadena)
+            // las evaluaba como NaN aunque parseFloat sí leía la nota.
+            if (numStr !== '' && !isNaN(parseFloat(numStr)) && isFinite(parseFloat(numStr))) {
                 return parseFloat(numStr);
             }
             return null;
@@ -2116,6 +2169,7 @@
                 const lvl = document.getElementById('select-level').value;
                 const unit = document.getElementById('select-unit').value;
                 const key = getUnitKey(lvl, unit);
+                currentUnitKey = key;
                 document.getElementById('current-group-label').textContent = key;
 
                 // === GUARDADO AUTOMÁTICO EN TIEMPO REAL ===
@@ -2730,6 +2784,7 @@
             currentProcessedData = (unitData.data || [])
                 .map(s => normalizeStudent(s))
                 .sort(sortStudentsByName);
+            currentUnitKey = key;
             renderTable(currentProcessedData);
             document.getElementById('results-section').classList.remove('hidden');
             document.getElementById('current-group-label').textContent = key;
@@ -2778,6 +2833,7 @@
 
             // Resetear el estado activo de los datos procesados
             currentProcessedData = null;
+            currentUnitKey = null;
             
             // Ocultar secciones de la interfaz
             document.getElementById('results-section').classList.add('hidden');
@@ -3112,6 +3168,7 @@
             // Limpiar estado local
             Object.keys(savedUnits).forEach(k => delete savedUnits[k]);
             currentProcessedData = null;
+            currentUnitKey = null;
             resetSelectedFiles(); // limpiar también los archivos seleccionados en memoria
             document.getElementById('results-section').classList.add('hidden');
             setSyncStatus('idle');
@@ -3238,14 +3295,15 @@
                     if (snap.exists()) {
                         const data = snap.val();
                         for (const key in data) {
-                            if (data[key] && data[key].data) {
+                            // Solo aceptar unidades con estructura válida (data como array):
+                            // protege frente a entradas corruptas de la BD que romperían
+                            // la carga en pantalla, la importación o la impresión.
+                            if (data[key] && typeof data[key] === 'object' && Array.isArray(data[key].data)) {
                                 savedUnits[key] = data[key];
                                 // Normalizar cada estudiante: asegurar que tiene descriptors
                                 // y objectives como objetos (Firebase a veces convierte
                                 // claves numéricas en arrays o las pierde).
-                                if (Array.isArray(savedUnits[key].data)) {
-                                    savedUnits[key].data = savedUnits[key].data.map(s => normalizeStudent(s));
-                                }
+                                savedUnits[key].data = savedUnits[key].data.map(s => normalizeStudent(s));
                             }
                         }
                     }
@@ -3839,8 +3897,10 @@
                 listEl.innerHTML = rows.map(u => {
                     const isSelf = currentUser && u.username === currentUser.username;
                     const isProtected = window.fbConfig.ADMIN_USERS.includes(u.username);
-                    const editOnclick = `openUserEditor('${escapeHTML(u.username)}')`;
-                    const deleteOnclick = `confirmDeleteUser('${escapeHTML(u.username)}')`;
+                    // Los botones usan data-username (leído ya decodificado vía dataset)
+                    // en lugar de onclick inline: antes la comilla simple escapada como
+                    // &#39; se decodificaba DENTRO del string JS del atributo y podía
+                    // romper la llamada o permitir inyección de código.
                     return `
                         <tr class="border-t border-gray-200 hover:bg-gray-50">
                             <td class="px-4 py-3 font-medium text-gray-800">
@@ -3851,12 +3911,23 @@
                                 <span class="text-xs font-semibold px-2 py-1 rounded-full ${u.role === 'admin' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}">${u.role === 'admin' ? 'Admin' : 'Usuario'}</span>
                             </td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">
-                                <button onclick="${editOnclick}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mr-3" title="Editar">Editar</button>
-                                ${isProtected ? '<span class="text-gray-300 text-sm" title="Usuario protegido, no se puede eliminar">—</span>' : `<button onclick="${deleteOnclick}" class="text-red-600 hover:text-red-800 text-sm font-medium" title="Eliminar">Eliminar</button>`}
+                                <button data-action="edit-user" data-username="${escapeHTML(u.username)}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mr-3" title="Editar">Editar</button>
+                                ${isProtected ? '<span class="text-gray-300 text-sm" title="Usuario protegido, no se puede eliminar">—</span>' : `<button data-action="delete-user" data-username="${escapeHTML(u.username)}" class="text-red-600 hover:text-red-800 text-sm font-medium" title="Eliminar">Eliminar</button>`}
                             </td>
                         </tr>
                     `;
                 }).join('');
+
+                // Conectar los botones con addEventListener (el dataset devuelve el
+                // nombre ya decodificado, sin problema de doble escapado).
+                listEl.querySelectorAll('button[data-action]').forEach(btn => {
+                    const uname = btn.dataset.username;
+                    if (btn.dataset.action === 'edit-user') {
+                        btn.addEventListener('click', () => openUserEditor(uname));
+                    } else if (btn.dataset.action === 'delete-user') {
+                        btn.addEventListener('click', () => confirmDeleteUser(uname));
+                    }
+                });
             } catch (err) {
                 console.error('Error al listar usuarios:', err);
                 listEl.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-red-500">Error al cargar: ${escapeHTML(err.message || '')}</td></tr>`;
@@ -3925,6 +3996,15 @@
             const role = roleSelect.value;
             const p1 = pass1.value;
             const p2 = pass2.value;
+
+            // Validar el nombre de usuario SOLO al crear uno nuevo: debe ser una
+            // clave segura (letras minúsculas sin acentos, números, punto, guion y
+            // guion bajo, 3-24 caracteres). Los caracteres especiales romperían las
+            // rutas de Firebase y los manejadores de la interfaz.
+            if (!editingUsername && !/^[a-z0-9._-]{3,24}$/.test(username)) {
+                showModal('Nombre de usuario no válido', 'El nombre de usuario debe tener entre 3 y 24 caracteres y solo puede contener letras minúsculas (sin acentos ni ñ), números, punto (.), guion (-) y guion bajo (_).', [{ text: 'Entendido', type: 'primary' }]);
+                return;
+            }
 
             // Validaciones de contraseña
             const needsPassword = !editingUsername;
@@ -4100,6 +4180,10 @@
         function initFirebase() {
             // El script module ya cargó Firebase y lo expuso en window.fbDb
             firebaseReady = true;
+            // Si el timeout de arranque ya había mostrado un error de conexión
+            // (Firebase tardó más de 15 s en cargar), ocultarlo: ya está listo.
+            const loginErrorDiv = document.getElementById('login-error');
+            if (loginErrorDiv) loginErrorDiv.classList.add('hidden');
             // Restaurar sesión si existe (sessionStorage), o mostrar login
             restoreSession();
         }
@@ -4157,6 +4241,11 @@
             // Guardar el evento para poder dispararlo luego
             deferredInstallPrompt = e;
             console.log('[PWA] App lista para instalar. Mostrando botón.');
+
+            // Evitar botones duplicados: el evento puede dispararse más de una vez
+            // (p. ej. si el usuario descarta el prompt y vuelve a cumplir las
+            // condiciones de instalación).
+            if (document.getElementById('install-app-btn')) return;
 
             // Mostrar botón de instalación en el navbar
             const navDiv = document.querySelector('nav .max-w-7xl');
