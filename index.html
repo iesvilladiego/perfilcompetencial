@@ -135,7 +135,12 @@
             html, body { background: #ffffff !important; }
             body.printing-pdf > *:not(#print-area) { display: none !important; }
             body.printing-pdf #print-area { display: block !important; }
-            .pdf-page { page-break-after: always; break-after: page; }
+            /* Cada grupo (unidad) ocupa su propia página A4 completa:
+               page-break-after fuerza una página nueva por grupo y
+               page-break-inside evita que el informe de un grupo se
+               parta entre dos páginas (el escalado previo garantiza que
+               cabe entero: ver fitPrintPagesToA4 en el script). */
+            .pdf-page { page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
             .pdf-page:last-child { page-break-after: auto; break-after: auto; }
             table { page-break-inside: auto; }
             tr { page-break-inside: avoid; break-inside: avoid; }
@@ -615,7 +620,7 @@
                     <svg class="w-9 h-9 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3.5v17h17.5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 20.5v-4M11.75 20.5v-7.5M16 20.5v-11"></path></svg>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800">Perfil Competencial</h1>
-                <p class="text-sm text-gray-600 mt-1">IES Virgen de Villadiego (Peñaflor)</p>
+                <p class="text-sm text-gray-600 mt-1">IES Virgen de Villadiego - Peñaflor, Sevilla</p>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
@@ -1673,49 +1678,70 @@
         // Ventajas:
         //  - 100% fiable en todos los navegadores modernos.
         //  - El PDF resultante tiene texto seleccionable (no es una imagen).
-        //  - Las tablas largas se paginan automáticamente y repiten la cabecera.
+        //  - Cada grupo (unidad) se imprime en su propia página A4 completa:
+        //    fitPrintPagesToA4() escala el contenido (fuente/paddings) para que
+        //    TODOS los alumnos del grupo quepan en una sola página, y el salto
+        //    de página de .pdf-page separa los grupos entre sí (un A4 por grupo).
         //  - Las filas no se cortan a mitad (regla tr { page-break-inside: avoid }).
+        //  - Si a pesar de todo un grupo no cupiera (caso extremo), la cabecera
+        //    de la tabla se repite en la página de continuación (thead).
         // ============================================================
 
-        // Construye el HTML de una unidad para imprimir. Devuelve string HTML.
+        // Construye el HTML de una unidad (grupo) para imprimir. Devuelve string HTML.
+        // El informe de cada grupo se dimensiona para caber COMPLETO en una sola
+        // página A4: fuente y paddings se exponen como variables CSS (--fs, --py,
+        // --hpy, --h1, --hm, --ppb) con valores iniciales según el nº de alumnos
+        // del grupo; fitPrintPagesToA4() las ajusta finamente midiendo el render
+        // real justo antes de imprimir.
         function buildPrintablePageHTML(key, studentsData) {
+            // Punto de partida del escalado según el tamaño del grupo (evita
+            // iteraciones de ajuste innecesarias con clases numerosas).
+            const n = studentsData.length;
+            let fs = 10, py = 6, hpy = 8, h1 = 22, hm = 18, ppb = 16;
+            if (n > 22) { fs = 9.5; py = 5; }
+            if (n > 26) { fs = 9;   py = 4;   hpy = 6; h1 = 20; hm = 12; }
+            if (n > 30) { fs = 8.5; py = 3;           h1 = 19; hm = 10; }
+            if (n > 34) { fs = 8;   py = 2.5; hpy = 5; h1 = 18; hm = 8; }
+            if (n > 38) { fs = 7.5; py = 2;           h1 = 17; hm = 8; }
+            if (n > 42) { fs = 7;   py = 1.5; hpy = 4; h1 = 16; hm = 6; }
+
             const rows = studentsData.map((student, sIdx) => {
                 const tds = COMPETENCES_ORDER.map(comp => {
                     const grade = student.competences[comp];
                     const style = getGradeStyle(grade);
-                    return `<td style="border:1px solid #e5e7eb;padding:6px 4px;text-align:center;font-weight:600;${style}">${formatNumber(grade)}</td>`;
+                    return `<td style="border:1px solid #e5e7eb;padding:var(--py) 4px;text-align:center;font-weight:600;${style}">${formatNumber(grade)}</td>`;
                 }).join('');
                 const globalStyle = getGradeStyle(student.global);
                 return `<tr style="background-color:${sIdx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
-                    <td style="border:1px solid #e5e7eb;padding:6px 8px;font-weight:500;color:#111827;">${escapeHTML(student.name)}</td>
+                    <td style="border:1px solid #e5e7eb;padding:var(--py) 8px;font-weight:500;color:#111827;">${escapeHTML(student.name)}</td>
                     ${tds}
-                    <td style="border:1px solid #e5e7eb;padding:6px 8px;text-align:center;font-weight:bold;${globalStyle}">${formatNumber(student.global)}</td>
+                    <td style="border:1px solid #e5e7eb;padding:var(--py) 8px;text-align:center;font-weight:bold;${globalStyle}">${formatNumber(student.global)}</td>
                 </tr>`;
             }).join('');
 
             const compHeaders = COMPETENCES_ORDER.map(c =>
-                `<th style="border:1px solid #e5e7eb;padding:8px 6px;text-align:center;font-weight:bold;color:#374151;background:#f3f4f6;">${c}</th>`
+                `<th style="border:1px solid #e5e7eb;padding:var(--hpy) 6px;text-align:center;font-weight:bold;color:#374151;background:#f3f4f6;">${c}</th>`
             ).join('');
 
             const today = new Date().toLocaleDateString('es-ES');
 
             return `
-                <div class="pdf-page" style="padding:0 0 16px 0;">
-                    <div style="border-bottom:2px solid #4f46e5;padding-bottom:10px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;">
+                <div class="pdf-page" data-students="${n}" style="--fs:${fs}px;--py:${py}px;--hpy:${hpy}px;--h1:${h1}px;--hm:${hm}px;--ppb:${ppb}px;padding:0 0 var(--ppb) 0;">
+                    <div style="border-bottom:2px solid #4f46e5;padding-bottom:10px;margin-bottom:var(--hm);display:flex;justify-content:space-between;align-items:flex-end;">
                         <div>
-                            <h1 style="font-size:22px;font-weight:bold;color:#1e1b4b;margin:0;font-family:system-ui;">Perfil Competencial de Alumnado — ${escapeHTML(coursesCache[currentCourseId]?.name || currentCourseId || '')}</h1>
-                            <p style="font-size:12px;color:#4f46e5;font-weight:600;margin:3px 0 0 0;text-transform:uppercase;letter-spacing:0.05em;">IES Virgen de Villadiego (Peñaflor)</p>
+                            <h1 style="font-size:var(--h1);font-weight:bold;color:#1e1b4b;margin:0;font-family:system-ui;">Perfil Competencial de Alumnado — ${escapeHTML(coursesCache[currentCourseId]?.name || currentCourseId || '')}</h1>
+                            <p style="font-size:12px;color:#4f46e5;font-weight:600;margin:3px 0 0 0;text-transform:uppercase;letter-spacing:0.05em;">IES Virgen de Villadiego - Peñaflor, Sevilla</p>
                         </div>
                         <div style="text-align:right;">
                             <span style="background-color:#e0e7ff;color:#3730a3;padding:5px 14px;border-radius:9999px;font-weight:bold;font-size:14px;font-family:system-ui;">${escapeHTML(key)}</span>
                         </div>
                     </div>
-                    <table style="width:100%;border-collapse:collapse;font-size:10px;font-family:system-ui;margin-bottom:16px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:var(--fs);font-family:system-ui;margin-bottom:16px;">
                         <thead>
                             <tr>
-                                <th style="border:1px solid #e5e7eb;padding:8px;text-align:left;font-weight:bold;color:#374151;background:#f3f4f6;min-width:180px;">Alumno/a</th>
+                                <th style="border:1px solid #e5e7eb;padding:var(--hpy) 8px;text-align:left;font-weight:bold;color:#374151;background:#f3f4f6;min-width:180px;">Alumno/a</th>
                                 ${compHeaders}
-                                <th style="border:1px solid #e5e7eb;padding:8px;text-align:center;font-weight:bold;color:#1e1b4b;background-color:#e0e7ff;">Media Global</th>
+                                <th style="border:1px solid #e5e7eb;padding:var(--hpy) 8px;text-align:center;font-weight:bold;color:#1e1b4b;background-color:#e0e7ff;">Media Global</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1739,6 +1765,67 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        // ============================================================
+        //  AJUSTE AL A4: UN INFORME (GRUPO) = UNA PÁGINA COMPLETA
+        // ============================================================
+        // Área imprimible de un A4 horizontal con margen de 10mm: 277mm de
+        // ancho (aprox. 1047px) y 190mm de alto (aprox. 717px) a 96dpi. Se
+        // renderiza #print-area fuera de pantalla al ancho real del área
+        // imprimible, se mide la altura de cada .pdf-page y, mientras supere
+        // la altura útil, se reducen progresivamente sus variables CSS (--fs,
+        // --py, --hpy, --h1, --hm, --ppb) hasta que el informe del grupo
+        // completo quepa en una sola página. Como la medición se hace en el
+        // mismo navegador que luego imprime, se compensan automáticamente sus
+        // métricas de fuente (line-height real, redondeos, etc.).
+        function fitPrintPagesToA4() {
+            const printArea = document.getElementById('print-area');
+            const A4_ALTO_UTIL = 712;   // px: 190mm menos pequeño colchón de seguridad
+            const A4_ANCHO_UTIL = 1047; // px: 277mm
+            const MIN_FS = 6, MIN_PY = 1, MIN_HPY = 2;
+
+            // Hacer visible el contenido fuera de pantalla para poder medirlo.
+            printArea.style.position = 'fixed';
+            printArea.style.left = '-10000px';
+            printArea.style.top = '0';
+            printArea.style.width = A4_ANCHO_UTIL + 'px';
+            printArea.style.display = 'block';
+
+            printArea.querySelectorAll('.pdf-page').forEach(page => {
+                let fs = parseFloat(page.style.getPropertyValue('--fs')) || 10;
+                let py = parseFloat(page.style.getPropertyValue('--py')) || 6;
+                let hpy = parseFloat(page.style.getPropertyValue('--hpy')) || 8;
+                let h1 = parseFloat(page.style.getPropertyValue('--h1')) || 22;
+                let hm = parseFloat(page.style.getPropertyValue('--hm')) || 18;
+                let ppb = parseFloat(page.style.getPropertyValue('--ppb')) || 16;
+
+                let guard = 0; // límite de seguridad del bucle
+                while (page.getBoundingClientRect().height > A4_ALTO_UTIL && guard < 60) {
+                    if (fs <= MIN_FS && py <= MIN_PY && hpy <= MIN_HPY && ppb <= 4) break;
+                    if (fs > MIN_FS) fs = Math.max(MIN_FS, fs - 0.25);
+                    if (py > MIN_PY) py = Math.max(MIN_PY, py - 0.25);
+                    if (hpy > MIN_HPY) hpy = Math.max(MIN_HPY, hpy - 0.25);
+                    // Con compresión alta se compacta también la cabecera del
+                    // informe (título y márgenes), no solo la tabla.
+                    if (fs < 9) {
+                        if (h1 > 14) h1 = Math.max(14, h1 - 0.5);
+                        if (hm > 6) hm = Math.max(6, hm - 1);
+                    }
+                    if (fs <= 7.5 && ppb > 4) ppb = Math.max(4, ppb - 2);
+
+                    page.style.setProperty('--fs', fs + 'px');
+                    page.style.setProperty('--py', py + 'px');
+                    page.style.setProperty('--hpy', hpy + 'px');
+                    page.style.setProperty('--h1', h1 + 'px');
+                    page.style.setProperty('--hm', hm + 'px');
+                    page.style.setProperty('--ppb', ppb + 'px');
+                    guard++;
+                }
+            });
+
+            // Restaurar el contenedor (vuelve a estar oculto hasta la impresión).
+            printArea.style.cssText = '';
         }
 
         // Imprime (o guarda como PDF) las unidades seleccionadas usando impresión nativa.
@@ -1786,6 +1873,10 @@
                 showModal('Error', 'No se pudo construir el contenido para imprimir.', [{ text: 'Cerrar', type: 'danger' }]);
                 return;
             }
+
+            // Ajustar el contenido de cada informe (grupo) para que quepa
+            // completo en su propia página A4 antes de abrir el diálogo.
+            fitPrintPagesToA4();
 
             // Marcar el body para activar los CSS @media print y ocultar el resto de la UI.
             document.body.classList.add('printing-pdf');
