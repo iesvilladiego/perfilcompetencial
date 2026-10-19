@@ -1,4 +1,5 @@
 {
+  "id": "/perfilcompetencial/",
   "name": "Perfil Competencial ESO",
   "short_name": "Perfil Competencial",
   "description": "Aplicación para la gestión y evaluación competencial del alumnado de ESO según la LOMLOE. Permite procesar calificaciones por descriptor operativo, calcular objetivos de etapa y determinar la titulación.",
