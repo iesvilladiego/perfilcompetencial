@@ -10,7 +10,7 @@
 // la lee (fetch de sw.js + expresión regular) para mostrarla en el chip
 // del banner (#app-version-chip). Recuerda actualizarla en cada despliegue.
 
-const CACHE_VERSION = 'v1.5.4';
+const CACHE_VERSION = 'v1.5.5';
 const CACHE_NAME = 'perfil-competencial-' + CACHE_VERSION;
 
 // Recursos estáticos propios (se cachean al instalar)
